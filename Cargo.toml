@@ -1,0 +1,3 @@
+[workspace]
+resolver = "2"
+members = ["crates/core_ecs", "crates/engine_2d"]
