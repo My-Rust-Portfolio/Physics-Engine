@@ -41,7 +41,6 @@ impl EntityAllocator {
     }
 }
 
-//////////// TESTS
 #[cfg(test)]
 mod tests {
     use super::*;
