@@ -1,0 +1,212 @@
+use crate::components::{Position, Velocity};
+use core_ecs::{ComponentStorage, Entity, EntityAllocator};
+
+pub struct World2D {
+    allocator: EntityAllocator,
+    positions: ComponentStorage<Position>,
+    velocities: ComponentStorage<Velocity>,
+}
+
+impl World2D {
+    pub fn new() -> Self {
+        Self {
+            allocator: EntityAllocator::new(),
+            positions: ComponentStorage::new(),
+            velocities: ComponentStorage::new(),
+        }
+    }
+
+    pub fn spawn(&mut self) -> Entity {
+        self.allocator.allocate()
+    }
+
+    pub fn despawn(&mut self, entity: Entity) -> bool {
+        if !self.allocator.deallocate(entity) {
+            return false;
+        }
+
+        self.positions.remove(entity);
+        self.velocities.remove(entity);
+        true
+    }
+
+    pub fn is_alive(&self, entity: Entity) -> bool {
+        self.allocator.is_alive(entity)
+    }
+
+    pub fn add_position(&mut self, entity: Entity, position: Position) -> Option<Position> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+        self.positions.insert(entity, position)
+    }
+
+    pub fn add_velocity(&mut self, entity: Entity, velocity: Velocity) -> Option<Velocity> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+        self.velocities.insert(entity, velocity)
+    }
+
+    pub fn get_position(&self, entity: Entity) -> Option<&Position> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.positions.get(entity)
+    }
+
+    pub fn get_position_mut(&mut self, entity: Entity) -> Option<&mut Position> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.positions.get_mut(entity)
+    }
+
+    pub fn get_velocity(&self, entity: Entity) -> Option<&Velocity> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.velocities.get(entity)
+    }
+
+    pub fn get_velocity_mut(&mut self, entity: Entity) -> Option<&mut Velocity> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.velocities.get_mut(entity)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::{Position, Velocity};
+
+    #[test]
+    fn spawn_creates_alive_entity() {
+        let mut world = World2D::new();
+
+        let entity = world.spawn();
+
+        assert!(world.is_alive(entity));
+    }
+
+    #[test]
+    fn can_add_and_get_position() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        let old = world.add_position(entity, Position { x: 10.0, y: 20.0 });
+
+        assert_eq!(old, None);
+        assert_eq!(
+            world.get_position(entity),
+            Some(&Position { x: 10.0, y: 20.0 })
+        );
+    }
+
+    #[test]
+    fn can_add_and_get_velocity() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        let old = world.add_velocity(entity, Velocity { dx: 1.5, dy: -2.0 });
+
+        assert_eq!(old, None);
+        assert_eq!(
+            world.get_velocity(entity),
+            Some(&Velocity { dx: 1.5, dy: -2.0 })
+        );
+    }
+
+    #[test]
+    fn can_mutate_position_through_position_mut() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 1.0, y: 2.0 });
+
+        let position = world.get_position_mut(entity).unwrap();
+        position.x = 100.0;
+        position.y = 200.0;
+
+        assert_eq!(
+            world.get_position(entity),
+            Some(&Position { x: 100.0, y: 200.0 })
+        );
+    }
+
+    #[test]
+    fn can_mutate_velocity_through_position_mut() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_velocity(entity, Velocity { dx: 10.0, dy: 20.0 });
+
+        let velocity = world.get_velocity_mut(entity).unwrap();
+        velocity.dx = 100.0;
+        velocity.dy = 200.0;
+
+        assert_eq!(
+            world.get_velocity(entity),
+            Some(&Velocity {
+                dx: 100.0,
+                dy: 200.0
+            })
+        );
+    }
+
+    #[test]
+    fn despawn_removes_components_and_kills_entity() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 5.0, y: 6.0 });
+        world.add_velocity(entity, Velocity { dx: 7.0, dy: 8.0 });
+
+        assert!(world.despawn(entity));
+
+        assert!(!world.is_alive(entity));
+        assert_eq!(world.get_position(entity), None);
+        assert_eq!(world.get_velocity(entity), None);
+    }
+
+    #[test]
+    fn cannot_add_position_to_dead_entity() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        assert!(world.despawn(entity));
+
+        let result = world.add_position(entity, Position { x: 1.0, y: 2.0 });
+
+        assert_eq!(result, None);
+        assert_eq!(world.get_position(entity), None);
+    }
+
+    #[test]
+    fn cannot_add_velocity_to_dead_entity() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        assert!(world.despawn(entity));
+
+        let result = world.add_velocity(entity, Velocity { dx: 3.0, dy: 4.0 });
+
+        assert_eq!(result, None);
+        assert_eq!(world.get_velocity(entity), None);
+    }
+
+    #[test]
+    fn despawning_same_entity_twice_returns_false() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        assert!(world.despawn(entity));
+        assert!(!world.despawn(entity));
+    }
+}
