@@ -1,10 +1,11 @@
-use crate::components::{Position, Velocity};
+use crate::components::{Circle, Position, Velocity};
 use core_ecs::{ComponentStorage, Entity, EntityAllocator};
 
 pub struct World2D {
     allocator: EntityAllocator,
     positions: ComponentStorage<Position>,
     velocities: ComponentStorage<Velocity>,
+    circles: ComponentStorage<Circle>,
 }
 
 impl World2D {
@@ -13,6 +14,7 @@ impl World2D {
             allocator: EntityAllocator::new(),
             positions: ComponentStorage::new(),
             velocities: ComponentStorage::new(),
+            circles: ComponentStorage::new(),
         }
     }
 
@@ -27,6 +29,7 @@ impl World2D {
 
         self.positions.remove(entity);
         self.velocities.remove(entity);
+        self.circles.remove(entity);
         true
     }
 
@@ -46,6 +49,14 @@ impl World2D {
             return None;
         }
         self.velocities.insert(entity, velocity)
+    }
+
+    pub fn add_circle(&mut self, entity: Entity, circle: Circle) -> Option<Circle> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.circles.insert(entity, circle)
     }
 
     pub fn get_position(&self, entity: Entity) -> Option<&Position> {
@@ -78,6 +89,22 @@ impl World2D {
         }
 
         self.velocities.get_mut(entity)
+    }
+
+    pub fn get_circle(&self, entity: Entity) -> Option<&Circle> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.circles.get(entity)
+    }
+
+    pub fn get_circle_mut(&mut self, entity: Entity) -> Option<&mut Circle> {
+        if !self.is_alive(entity) {
+            return None;
+        }
+
+        self.circles.get_mut(entity)
     }
 }
 
@@ -124,6 +151,17 @@ mod tests {
     }
 
     #[test]
+    fn can_add_and_get_circle() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        let old = world.add_circle(entity, Circle { radius: 5.0 });
+
+        assert_eq!(old, None);
+        assert_eq!(world.get_circle(entity), Some(&Circle { radius: 5.0 }));
+    }
+
+    #[test]
     fn can_mutate_position_through_position_mut() {
         let mut world = World2D::new();
         let entity = world.spawn();
@@ -141,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn can_mutate_velocity_through_position_mut() {
+    fn can_mutate_velocity_through_velocity_mut() {
         let mut world = World2D::new();
         let entity = world.spawn();
 
@@ -161,18 +199,33 @@ mod tests {
     }
 
     #[test]
+    fn can_mutate_circle_through_circle_mut() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_circle(entity, Circle { radius: 5.0 });
+
+        let circle = world.get_circle_mut(entity).unwrap();
+        circle.radius = 100.0;
+
+        assert_eq!(world.get_circle(entity), Some(&Circle { radius: 100.0 }));
+    }
+
+    #[test]
     fn despawn_removes_components_and_kills_entity() {
         let mut world = World2D::new();
         let entity = world.spawn();
 
         world.add_position(entity, Position { x: 5.0, y: 6.0 });
         world.add_velocity(entity, Velocity { dx: 7.0, dy: 8.0 });
+        world.add_circle(entity, Circle { radius: 5.0 });
 
         assert!(world.despawn(entity));
 
         assert!(!world.is_alive(entity));
         assert_eq!(world.get_position(entity), None);
         assert_eq!(world.get_velocity(entity), None);
+        assert_eq!(world.get_circle(entity), None);
     }
 
     #[test]
@@ -199,6 +252,19 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(world.get_velocity(entity), None);
+    }
+
+    #[test]
+    fn cannot_add_circle_to_dead_entity() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        assert!(world.despawn(entity));
+
+        let result = world.add_circle(entity, Circle { radius: 5.0 });
+
+        assert_eq!(result, None);
+        assert_eq!(world.get_circle(entity), None);
     }
 
     #[test]
