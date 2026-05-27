@@ -15,6 +15,7 @@ pub struct Engine2DApp {
     next_radius: f32,
     ground_y: f32,
     gravity: f32,
+    bouncing_factor: f32,
 }
 
 impl Engine2DApp {
@@ -25,14 +26,13 @@ impl Engine2DApp {
             next_radius: 20.0,
             ground_y: 500.0,
             gravity: 500.0,
+            bouncing_factor: 0.45,
         }
     }
 }
 
 impl eframe::App for Engine2DApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        physics::step(&mut self.world, 1.0 / 60.0, self.gravity, self.ground_y);
-
         egui::SidePanel::left("tools_panel").show(ctx, |ui| {
             ui.heading("Tools");
             ui.separator();
@@ -47,6 +47,7 @@ impl eframe::App for Engine2DApp {
             ui.heading("Scene");
             ui.add(egui::Slider::new(&mut self.ground_y, 100.0..=700.0).text("Ground Y"));
             ui.add(egui::Slider::new(&mut self.gravity, 0.0..=2000.0).text("Gravity"));
+            ui.add(egui::Slider::new(&mut self.bouncing_factor, 0.0..=1.0).text("Bounciness"));
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -54,6 +55,17 @@ impl eframe::App for Engine2DApp {
             let (response, painter) = ui.allocate_painter(available_size, egui::Sense::click());
 
             let rect = response.rect;
+            // do physics
+            physics::step(
+                &mut self.world,
+                1.0 / 60.0,
+                self.gravity,
+                rect.width(),
+                rect.height(),
+                self.ground_y,
+                self.bouncing_factor,
+            );
+
             painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(25, 25, 35));
             painter.rect_stroke(
                 rect,

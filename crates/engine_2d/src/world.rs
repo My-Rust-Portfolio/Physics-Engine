@@ -116,7 +116,7 @@ impl World2D {
     }
 
     pub fn circles_iter(&self) -> impl Iterator<Item = (&Entity, &Circle)> {
-       self.circles.iter()
+        self.circles.iter()
     }
 }
 

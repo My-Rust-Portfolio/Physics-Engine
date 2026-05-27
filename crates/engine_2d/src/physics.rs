@@ -2,7 +2,15 @@ use crate::components::{Position, Velocity};
 use crate::world::World2D;
 use core_ecs::Entity;
 
-pub fn step(world: &mut World2D, dt: f32, gravity: f32, ground_y: f32) {
+pub fn step(
+    world: &mut World2D,
+    dt: f32,
+    gravity: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    ground_y: f32,
+    bouncing_factor: f32,
+) {
     let mut updates = Vec::new();
 
     // calculate new velocity with gravity
@@ -19,13 +27,40 @@ pub fn step(world: &mut World2D, dt: f32, gravity: f32, ground_y: f32) {
             };
 
             if let Some(circle) = world.get_circle(*entity) {
-                let circle_bottom = new_position.y + circle.radius;
+                let radius = circle.radius;
 
-                if circle_bottom > ground_y {
-                    new_position.y = ground_y - circle.radius;
+                if new_position.x - radius < 0.0 {
+                    new_position.x = radius;
+
+                    if new_velocity.dx < 0.0 {
+                        new_velocity.dx = -new_velocity.dx * bouncing_factor;
+                    }
+                }
+
+                if new_position.x + radius > viewport_width {
+                    new_position.x = viewport_width - radius;
+
+                    if new_velocity.dx > 0.0 {
+                        new_velocity.dx = -new_velocity.dx * bouncing_factor;
+                    }
+                }
+
+                if new_position.y - radius < 0.0 {
+                    new_position.y = radius;
+
+                    if new_velocity.dy < 0.0 {
+                        new_velocity.dy = -new_velocity.dy * bouncing_factor;
+                    }
+                }
+
+                let floor_y = ground_y.min(viewport_height);
+                let circle_bottom = new_position.y + radius;
+
+                if circle_bottom > floor_y {
+                    new_position.y = floor_y - radius;
 
                     if new_velocity.dy > 0.0 {
-                        new_velocity.dy = 0.0;
+                        new_velocity.dy = -new_velocity.dy * bouncing_factor;
                     }
                 }
             }
@@ -104,17 +139,36 @@ mod tests {
     use super::*;
     use crate::components::{Circle, Position, Velocity};
 
+    fn assert_f32_close(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 0.001,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_position(world: &World2D, entity: Entity, expected_x: f32, expected_y: f32) {
+        let pos = world.get_position(entity).unwrap();
+        assert_f32_close(pos.x, expected_x);
+        assert_f32_close(pos.y, expected_y);
+    }
+
+    fn assert_velocity(world: &World2D, entity: Entity, expected_dx: f32, expected_dy: f32) {
+        let vel = world.get_velocity(entity).unwrap();
+        assert_f32_close(vel.dx, expected_dx);
+        assert_f32_close(vel.dy, expected_dy);
+    }
+
     #[test]
     fn gravity_increases_downward_velocity() {
         let mut world = World2D::new();
         let entity = world.spawn();
 
-        world.add_position(entity, Position { x: 0.0, y: 0.0 });
+        world.add_position(entity, Position { x: 100.0, y: 100.0 });
         world.add_velocity(entity, Velocity { dx: 0.0, dy: 0.0 });
 
-        step(&mut world, 1.0, 100.0, 1000.0);
+        step(&mut world, 1.0, 100.0, 1000.0, 1000.0, 900.0, 1.0);
 
-        assert_eq!(world.get_velocity(entity), Some(&Velocity { dx: 0.0, dy: 100.0 }));
+        assert_velocity(&world, entity, 0.0, 100.0);
     }
 
     #[test]
@@ -122,16 +176,16 @@ mod tests {
         let mut world = World2D::new();
         let entity = world.spawn();
 
-        world.add_position(entity, Position { x: 0.0, y: 0.0 });
+        world.add_position(entity, Position { x: 100.0, y: 100.0 });
         world.add_velocity(entity, Velocity { dx: 0.0, dy: 0.0 });
 
-        step(&mut world, 1.0, 100.0, 1000.0);
+        step(&mut world, 1.0, 100.0, 1000.0, 1000.0, 900.0, 1.0);
 
-        assert_eq!(world.get_position(entity), Some(&Position { x: 0.0, y: 100.0 }));
+        assert_position(&world, entity, 100.0, 200.0);
     }
 
     #[test]
-    fn circle_stops_on_ground() {
+    fn circle_bounces_on_ground() {
         let mut world = World2D::new();
         let entity = world.spawn();
 
@@ -139,10 +193,10 @@ mod tests {
         world.add_velocity(entity, Velocity { dx: 0.0, dy: 50.0 });
         world.add_circle(entity, Circle { radius: 10.0 });
 
-        step(&mut world, 1.0, 0.0, 100.0);
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 100.0, 1.0);
 
-        assert_eq!(world.get_position(entity), Some(&Position { x: 50.0, y: 90.0 }));
-        assert_eq!(world.get_velocity(entity), Some(&Velocity { dx: 0.0, dy: 0.0 }));
+        assert_position(&world, entity, 50.0, 90.0);
+        assert_velocity(&world, entity, 0.0, -50.0);
     }
 
     #[test]
@@ -154,13 +208,103 @@ mod tests {
         world.add_velocity(entity, Velocity { dx: 0.0, dy: 0.0 });
         world.add_circle(entity, Circle { radius: 10.0 });
 
-        step(&mut world, 1.0, 0.0, 100.0);
-        assert_eq!(world.get_position(entity), Some(&Position { x: 50.0, y: 90.0 }));
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 100.0, 1.0);
+        assert_position(&world, entity, 50.0, 90.0);
 
-        step(&mut world, 1.0, 100.0, 200.0);
+        step(&mut world, 1.0, 100.0, 500.0, 500.0, 200.0, 1.0);
 
-        assert_eq!(world.get_velocity(entity), Some(&Velocity { dx: 0.0, dy: 100.0 }));
-        assert_eq!(world.get_position(entity), Some(&Position { x: 50.0, y: 190.0 }));
+        assert_velocity(&world, entity, 0.0, 100.0);
+        assert_position(&world, entity, 50.0, 190.0);
+    }
+
+    #[test]
+    fn circle_bounces_off_left_wall() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 10.0, y: 100.0 });
+        world.add_velocity(entity, Velocity { dx: -50.0, dy: 0.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 400.0, 1.0);
+
+        assert_position(&world, entity, 10.0, 100.0);
+        assert_velocity(&world, entity, 50.0, 0.0);
+    }
+
+    #[test]
+    fn circle_bounces_off_right_wall() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 490.0, y: 100.0 });
+        world.add_velocity(entity, Velocity { dx: 50.0, dy: 0.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 400.0, 1.0);
+
+        assert_position(&world, entity, 490.0, 100.0);
+        assert_velocity(&world, entity, -50.0, 0.0);
+    }
+
+    #[test]
+    fn circle_bounces_off_top_wall() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 100.0, y: 10.0 });
+        world.add_velocity(entity, Velocity { dx: 0.0, dy: -50.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 400.0, 1.0);
+
+        assert_position(&world, entity, 100.0, 10.0);
+        assert_velocity(&world, entity, 0.0, 50.0);
+    }
+
+    #[test]
+    fn bouncing_factor_scales_wall_bounce() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 10.0, y: 100.0 });
+        world.add_velocity(entity, Velocity { dx: -40.0, dy: 0.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 400.0, 0.5);
+
+        assert_position(&world, entity, 10.0, 100.0);
+        assert_velocity(&world, entity, 20.0, 0.0);
+    }
+
+    #[test]
+    fn bouncing_factor_scales_ground_bounce() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 100.0, y: 390.0 });
+        world.add_velocity(entity, Velocity { dx: 0.0, dy: 40.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 500.0, 400.0, 0.5);
+
+        assert_position(&world, entity, 100.0, 390.0);
+        assert_velocity(&world, entity, 0.0, -20.0);
+    }
+
+    #[test]
+    fn ground_uses_min_of_ground_y_and_viewport_height() {
+        let mut world = World2D::new();
+        let entity = world.spawn();
+
+        world.add_position(entity, Position { x: 100.0, y: 285.0 });
+        world.add_velocity(entity, Velocity { dx: 0.0, dy: 30.0 });
+        world.add_circle(entity, Circle { radius: 10.0 });
+
+        step(&mut world, 1.0, 0.0, 500.0, 300.0, 400.0, 1.0);
+
+        assert_position(&world, entity, 100.0, 290.0);
+        assert_velocity(&world, entity, 0.0, -30.0);
     }
 
     #[test]
@@ -177,7 +321,7 @@ mod tests {
         world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
         world.add_circle(b, Circle { radius: 20.0 });
 
-        step(&mut world, 0.0, 0.0, 1000.0);
+        step(&mut world, 0.0, 0.0, 1000.0, 1000.0, 900.0, 1.0);
 
         let pos_a = world.get_position(a).unwrap();
         let pos_b = world.get_position(b).unwrap();
@@ -203,9 +347,9 @@ mod tests {
         world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
         world.add_circle(b, Circle { radius: 20.0 });
 
-        step(&mut world, 0.0, 0.0, 1000.0);
+        step(&mut world, 0.0, 0.0, 1000.0, 1000.0, 900.0, 1.0);
 
-        assert_eq!(world.get_position(a), Some(&Position { x: 100.0, y: 100.0 }));
-        assert_eq!(world.get_position(b), Some(&Position { x: 200.0, y: 100.0 }));
+        assert_position(&world, a, 100.0, 100.0);
+        assert_position(&world, b, 200.0, 100.0);
     }
 }
