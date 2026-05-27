@@ -333,7 +333,10 @@ mod tests {
 
         world.update_positions(0.5);
 
-        assert_eq!(world.get_position(entity), Some(&Position { x: 1.0, y: 1.5 }));
+        assert_eq!(
+            world.get_position(entity),
+            Some(&Position { x: 1.0, y: 1.5 })
+        );
     }
 
     #[test]
@@ -345,7 +348,10 @@ mod tests {
 
         world.update_positions(1.0);
 
-        assert_eq!(world.get_position(entity), Some(&Position { x: 10.0, y: 20.0 }));
+        assert_eq!(
+            world.get_position(entity),
+            Some(&Position { x: 10.0, y: 20.0 })
+        );
     }
 
     #[test]
@@ -358,7 +364,10 @@ mod tests {
         world.update_positions(1.0);
 
         assert_eq!(world.get_position(entity), None);
-        assert_eq!(world.get_velocity(entity), Some(&Velocity { dx: 5.0, dy: 6.0 }));
+        assert_eq!(
+            world.get_velocity(entity),
+            Some(&Velocity { dx: 5.0, dy: 6.0 })
+        );
     }
 
     #[test]
@@ -376,7 +385,13 @@ mod tests {
 
         world.update_positions(2.0);
 
-        assert_eq!(world.get_position(first), Some(&Position { x: 2.0, y: 4.0 }));
-        assert_eq!(world.get_position(second), Some(&Position { x: 6.0, y: 18.0 }));
+        assert_eq!(
+            world.get_position(first),
+            Some(&Position { x: 2.0, y: 4.0 })
+        );
+        assert_eq!(
+            world.get_position(second),
+            Some(&Position { x: 6.0, y: 18.0 })
+        );
     }
 }

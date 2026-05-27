@@ -41,7 +41,7 @@ impl<T> ComponentStorage<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Entity, &T)> {
-    self.components.iter()
+        self.components.iter()
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Entity, &mut T)> {

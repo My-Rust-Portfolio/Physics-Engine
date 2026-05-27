@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 core_ecs = { path = "../core_ecs" }
+eframe = "0.33.3"
