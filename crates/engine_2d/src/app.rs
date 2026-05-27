@@ -1,8 +1,9 @@
 use eframe::egui;
 
 use crate::physics;
-use crate::scene::spawn_circle;
+use crate::scene::{spawn_circle, find_circle_at_position};
 use crate::world::World2D;
+use crate::components::Position;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Tool {
@@ -38,6 +39,7 @@ impl eframe::App for Engine2DApp {
             ui.separator();
 
             ui.selectable_value(&mut self.selected_tool, Tool::PlaceCircle, "Place Circle");
+            ui.label("Right-click a circle to delete it");
             ui.separator();
 
             ui.heading("Spawn Settings");
@@ -91,6 +93,19 @@ impl eframe::App for Engine2DApp {
                         Tool::PlaceCircle => {
                             spawn_circle(&mut self.world, local_x, local_y, self.next_radius);
                         }
+                    }
+                }
+            }
+
+            if response.clicked_by(egui::PointerButton::Secondary) {
+                if let Some(pointer_pos) = response.interact_pointer_pos() {
+                    let local_pos = Position {
+                        x: pointer_pos.x - rect.min.x,
+                        y: pointer_pos.y - rect.min.y,
+                    };
+
+                    if let Some(entity) = find_circle_at_position(&self.world, local_pos) {
+                        self.world.despawn(entity);
                     }
                 }
             }
