@@ -1,5 +1,6 @@
 use eframe::egui;
 
+use crate::physics;
 use crate::scene::spawn_circle;
 use crate::world::World2D;
 
@@ -13,6 +14,7 @@ pub struct Engine2DApp {
     selected_tool: Tool,
     next_radius: f32,
     ground_y: f32,
+    gravity: f32,
 }
 
 impl Engine2DApp {
@@ -22,13 +24,14 @@ impl Engine2DApp {
             selected_tool: Tool::PlaceCircle,
             next_radius: 20.0,
             ground_y: 500.0,
+            gravity: 500.0,
         }
     }
 }
 
 impl eframe::App for Engine2DApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.world.update_positions(1.0 / 60.0);
+        physics::step(&mut self.world, 1.0 / 60.0, self.gravity, self.ground_y);
 
         egui::SidePanel::left("tools_panel").show(ctx, |ui| {
             ui.heading("Tools");
@@ -43,6 +46,7 @@ impl eframe::App for Engine2DApp {
 
             ui.heading("Scene");
             ui.add(egui::Slider::new(&mut self.ground_y, 100.0..=700.0).text("Ground Y"));
+            ui.add(egui::Slider::new(&mut self.gravity, 0.0..=2000.0).text("Gravity"));
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {

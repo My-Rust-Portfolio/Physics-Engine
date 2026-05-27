@@ -1,5 +1,6 @@
 mod app;
 mod components;
+mod physics;
 mod scene;
 mod world;
 

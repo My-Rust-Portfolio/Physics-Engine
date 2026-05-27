@@ -111,26 +111,8 @@ impl World2D {
         self.positions.iter()
     }
 
-    pub fn update_positions(&mut self, dt: f32) {
-        let mut updates = Vec::new();
-
-        for (entity, velocity) in self.velocities.iter() {
-            if let Some(position) = self.positions.get(*entity) {
-                updates.push((
-                    *entity,
-                    Position {
-                        x: position.x + velocity.dx * dt,
-                        y: position.y + velocity.dy * dt,
-                    },
-                ));
-            }
-        }
-
-        for (entity, new_position) in updates {
-            if let Some(position) = self.positions.get_mut(entity) {
-                *position = new_position;
-            }
-        }
+    pub fn velocities_iter(&self) -> impl Iterator<Item = (&Entity, &Velocity)> {
+        self.velocities.iter()
     }
 }
 
