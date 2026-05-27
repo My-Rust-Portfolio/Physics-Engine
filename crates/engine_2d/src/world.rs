@@ -295,10 +295,16 @@ mod tests {
         let e1 = world.spawn();
         let e2 = world.spawn();
         let e3 = world.spawn();
+        let e4 = world.spawn();
+        let e5 = world.spawn();
+        let e6 = world.spawn();
 
         world.add_position(e1, Position { x: 5.0, y: 5.0 });
         world.add_position(e2, Position { x: 10.0, y: 10.0 });
         world.add_velocity(e3, Velocity { dx: 1.0, dy: 1.0 });
+        world.add_velocity(e4, Velocity { dx: 20.0, dy: 20.0 });
+        world.add_circle(e5, Circle { radius: 5.0 });
+        world.add_circle(e6, Circle { radius: 15.0 });
 
         let mut count = 0;
         for (entity, _pos) in world.positions_iter() {
@@ -310,74 +316,56 @@ mod tests {
     }
 
     #[test]
-    fn update_positions_moves_entity_with_position_and_velocity() {
+    fn velocities_iter_returns_all_entities_with_velocities() {
         let mut world = World2D::new();
-        let entity = world.spawn();
 
-        world.add_position(entity, Position { x: 0.0, y: 0.0 });
-        world.add_velocity(entity, Velocity { dx: 2.0, dy: 3.0 });
+        let e1 = world.spawn();
+        let e2 = world.spawn();
+        let e3 = world.spawn();
+        let e4 = world.spawn();
+        let e5 = world.spawn();
+        let e6 = world.spawn();
 
-        world.update_positions(0.5);
+        world.add_position(e1, Position { x: 5.0, y: 5.0 });
+        world.add_position(e2, Position { x: 10.0, y: 10.0 });
+        world.add_velocity(e3, Velocity { dx: 1.0, dy: 1.0 });
+        world.add_velocity(e4, Velocity { dx: 20.0, dy: 20.0 });
+        world.add_circle(e5, Circle { radius: 5.0 });
+        world.add_circle(e6, Circle { radius: 15.0 });
 
-        assert_eq!(
-            world.get_position(entity),
-            Some(&Position { x: 1.0, y: 1.5 })
-        );
+        let mut count = 0;
+        for (entity, _pos) in world.velocities_iter() {
+            count += 1;
+            assert!(*entity == e3 || *entity == e4);
+        }
+
+        assert_eq!(count, 2);
     }
 
     #[test]
-    fn update_positions_does_not_move_entity_without_velocity() {
-        let mut world = World2D::new();
-        let entity = world.spawn();
-
-        world.add_position(entity, Position { x: 10.0, y: 20.0 });
-
-        world.update_positions(1.0);
-
-        assert_eq!(
-            world.get_position(entity),
-            Some(&Position { x: 10.0, y: 20.0 })
-        );
-    }
-
-    #[test]
-    fn update_positions_ignores_entity_without_position() {
-        let mut world = World2D::new();
-        let entity = world.spawn();
-
-        world.add_velocity(entity, Velocity { dx: 5.0, dy: 6.0 });
-
-        world.update_positions(1.0);
-
-        assert_eq!(world.get_position(entity), None);
-        assert_eq!(
-            world.get_velocity(entity),
-            Some(&Velocity { dx: 5.0, dy: 6.0 })
-        );
-    }
-
-    #[test]
-    fn update_positions_moves_multiple_entities() {
+    fn circles_iter_returns_all_entities_with_circles() {
         let mut world = World2D::new();
 
-        let first = world.spawn();
-        let second = world.spawn();
+        let e1 = world.spawn();
+        let e2 = world.spawn();
+        let e3 = world.spawn();
+        let e4 = world.spawn();
+        let e5 = world.spawn();
+        let e6 = world.spawn();
 
-        world.add_position(first, Position { x: 0.0, y: 0.0 });
-        world.add_velocity(first, Velocity { dx: 1.0, dy: 2.0 });
+        world.add_position(e1, Position { x: 5.0, y: 5.0 });
+        world.add_position(e2, Position { x: 10.0, y: 10.0 });
+        world.add_velocity(e3, Velocity { dx: 1.0, dy: 1.0 });
+        world.add_velocity(e4, Velocity { dx: 20.0, dy: 20.0 });
+        world.add_circle(e5, Circle { radius: 5.0 });
+        world.add_circle(e6, Circle { radius: 15.0 });
 
-        world.add_position(second, Position { x: 10.0, y: 10.0 });
-        world.add_velocity(second, Velocity { dx: -2.0, dy: 4.0 });
+        let mut count = 0;
+        for (entity, _pos) in world.circles_iter() {
+            count += 1;
+            assert!(*entity == e5 || *entity == e6);
+        }
 
-        world.update_positions(2.0);
-
-        assert_eq!(
-            world.get_position(first),
-            Some(&Position { x: 2.0, y: 4.0 })
-        );
-        assert_eq!(
-            world.get_position(second),
-            Some(&Position { x: 6.0, y: 18.0 })
-        );
+        assert_eq!(count, 2);
     }
 }

@@ -162,50 +162,50 @@ mod tests {
         assert_eq!(world.get_velocity(entity), Some(&Velocity { dx: 0.0, dy: 100.0 }));
         assert_eq!(world.get_position(entity), Some(&Position { x: 50.0, y: 190.0 }));
     }
-}
 
-#[test]
-fn overlapping_circles_are_separated() {
-    let mut world = World2D::new();
+    #[test]
+    fn overlapping_circles_are_separated() {
+        let mut world = World2D::new();
 
-    let a = world.spawn();
-    world.add_position(a, Position { x: 100.0, y: 100.0 });
-    world.add_velocity(a, Velocity { dx: 0.0, dy: 0.0 });
-    world.add_circle(a, Circle { radius: 20.0 });
+        let a = world.spawn();
+        world.add_position(a, Position { x: 100.0, y: 100.0 });
+        world.add_velocity(a, Velocity { dx: 0.0, dy: 0.0 });
+        world.add_circle(a, Circle { radius: 20.0 });
 
-    let b = world.spawn();
-    world.add_position(b, Position { x: 110.0, y: 100.0 });
-    world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
-    world.add_circle(b, Circle { radius: 20.0 });
+        let b = world.spawn();
+        world.add_position(b, Position { x: 110.0, y: 100.0 });
+        world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
+        world.add_circle(b, Circle { radius: 20.0 });
 
-    step(&mut world, 0.0, 0.0, 1000.0);
+        step(&mut world, 0.0, 0.0, 1000.0);
 
-    let pos_a = world.position(a).unwrap();
-    let pos_b = world.position(b).unwrap();
+        let pos_a = world.get_position(a).unwrap();
+        let pos_b = world.get_position(b).unwrap();
 
-    let dx = pos_b.x - pos_a.x;
-    let dy = pos_b.y - pos_a.y;
-    let distance = (dx * dx + dy * dy).sqrt();
+        let dx = pos_b.x - pos_a.x;
+        let dy = pos_b.y - pos_a.y;
+        let distance = (dx * dx + dy * dy).sqrt();
 
-    assert!(distance >= 40.0 - 0.001);
-}
+        assert!(distance >= 40.0 - 0.001);
+    }
 
-#[test]
-fn non_overlapping_circles_are_unchanged() {
-    let mut world = World2D::new();
+    #[test]
+    fn non_overlapping_circles_are_unchanged() {
+        let mut world = World2D::new();
 
-    let a = world.spawn();
-    world.add_position(a, Position { x: 100.0, y: 100.0 });
-    world.add_velocity(a, Velocity { dx: 0.0, dy: 0.0 });
-    world.add_circle(a, Circle { radius: 20.0 });
+        let a = world.spawn();
+        world.add_position(a, Position { x: 100.0, y: 100.0 });
+        world.add_velocity(a, Velocity { dx: 0.0, dy: 0.0 });
+        world.add_circle(a, Circle { radius: 20.0 });
 
-    let b = world.spawn();
-    world.add_position(b, Position { x: 200.0, y: 100.0 });
-    world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
-    world.add_circle(b, Circle { radius: 20.0 });
+        let b = world.spawn();
+        world.add_position(b, Position { x: 200.0, y: 100.0 });
+        world.add_velocity(b, Velocity { dx: 0.0, dy: 0.0 });
+        world.add_circle(b, Circle { radius: 20.0 });
 
-    step(&mut world, 0.0, 0.0, 1000.0);
+        step(&mut world, 0.0, 0.0, 1000.0);
 
-    assert_eq!(world.position(a), Some(&Position { x: 100.0, y: 100.0 }));
-    assert_eq!(world.position(b), Some(&Position { x: 200.0, y: 100.0 }));
+        assert_eq!(world.get_position(a), Some(&Position { x: 100.0, y: 100.0 }));
+        assert_eq!(world.get_position(b), Some(&Position { x: 200.0, y: 100.0 }));
+    }
 }
