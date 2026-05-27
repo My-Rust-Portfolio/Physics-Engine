@@ -39,6 +39,14 @@ impl<T> ComponentStorage<T> {
     pub fn is_empty(&self) -> bool {
         self.components.is_empty()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Entity, &T)> {
+    self.components.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Entity, &mut T)> {
+        self.components.iter_mut()
+    }
 }
 
 #[cfg(test)]
@@ -110,5 +118,41 @@ mod tests {
         assert_eq!(removed, Some(Position { x: 1.0, y: 2.0 }));
         assert_eq!(storage.get(entity), None);
         assert!(!storage.contains(entity));
+    }
+
+    #[test]
+    fn iter_returns_all_components() {
+        let mut storage = ComponentStorage::new();
+        let e1 = Entity::new(0, 0);
+        let e2 = Entity::new(1, 0);
+
+        storage.insert(e1, Position { x: 1.0, y: 2.0 });
+        storage.insert(e2, Position { x: 3.0, y: 4.0 });
+
+        let mut count = 0;
+        for (entity, pos) in storage.iter() {
+            count += 1;
+            assert!(entity.get_index() == 0 || entity.get_index() == 1);
+            assert!(pos.x == 1.0 || pos.x == 3.0);
+        }
+
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn iter_mut_allows_mutation_of_all_components() {
+        let mut storage = ComponentStorage::new();
+        let e1 = Entity::new(0, 0);
+        let e2 = Entity::new(1, 0);
+
+        storage.insert(e1, Position { x: 1.0, y: 2.0 });
+        storage.insert(e2, Position { x: 3.0, y: 4.0 });
+
+        for (_entity, pos) in storage.iter_mut() {
+            pos.x += 10.0;
+        }
+
+        assert_eq!(storage.get(e1), Some(&Position { x: 11.0, y: 2.0 }));
+        assert_eq!(storage.get(e2), Some(&Position { x: 13.0, y: 4.0 }));
     }
 }
