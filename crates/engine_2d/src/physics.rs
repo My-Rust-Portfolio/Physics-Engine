@@ -80,25 +80,26 @@ pub fn step(
         }
     }
 
-    handle_circle_circle_collisions(world);
+    handle_circle_circle_collisions(world, bouncing_factor);
 }
 
-fn handle_circle_circle_collisions(world: &mut World2D) {
-    let circles: Vec<(Entity, Position, f32)> = world
+fn handle_circle_circle_collisions(world: &mut World2D, bouncing_factor: f32) {
+    let circles: Vec<(Entity, Position, Velocity, f32)> = world
         .positions_iter()
         .filter_map(|(entity, position)| {
-            world
-                .get_circle(*entity)
-                .map(|circle| (*entity, *position, circle.radius))
+            let circle = world.get_circle(*entity)?;
+            let velocity = world.get_velocity(*entity)?;
+            Some((*entity, *position, *velocity, circle.radius))
         })
         .collect();
 
-    let mut position_corrections: Vec<(Entity, f32, f32)> = Vec::new();
+    let mut position_updates: Vec<(Entity, f32, f32)> = Vec::new();
+    let mut velocity_updates: Vec<(Entity, f32, f32)> = Vec::new();
 
     for i in 0..circles.len() {
         for j in (i + 1)..circles.len() {
-            let (entity_a, position_a, radius_a) = circles[i];
-            let (entity_b, position_b, radius_b) = circles[j];
+            let (entity_a, position_a, velocity_a, radius_a) = circles[i];
+            let (entity_b, position_b, velocity_b, radius_b) = circles[j];
 
             let dx = position_b.x - position_a.x;
             let dy = position_b.y - position_a.y;
@@ -120,16 +121,36 @@ fn handle_circle_circle_collisions(world: &mut World2D) {
                 let correction_x = normal_x * overlap * 0.5;
                 let correction_y = normal_y * overlap * 0.5;
 
-                position_corrections.push((entity_a, -correction_x, -correction_y));
-                position_corrections.push((entity_b, correction_x, correction_y));
+                position_updates.push((entity_a, -correction_x, -correction_y));
+                position_updates.push((entity_b, correction_x, correction_y));
+
+                let relative_dx = velocity_b.dx - velocity_a.dx;
+                let relative_dy = velocity_b.dy - velocity_a.dy;
+                let normal_velocity = relative_dx * normal_x + relative_dy * normal_y;
+
+                if normal_velocity < 0.0 {
+                    let impulse = -(1.0 + bouncing_factor) * normal_velocity * 0.5;
+                    let impulse_x = impulse * normal_x;
+                    let impulse_y = impulse * normal_y;
+
+                    velocity_updates.push((entity_a, -impulse_x, -impulse_y));
+                    velocity_updates.push((entity_b, impulse_x, impulse_y));
+                }
             }
         }
     }
 
-    for (entity, correction_x, correction_y) in position_corrections {
+    for (entity, correction_x, correction_y) in position_updates {
         if let Some(position) = world.get_position_mut(entity) {
             position.x += correction_x;
             position.y += correction_y;
+        }
+    }
+
+    for (entity, delta_dx, delta_dy) in velocity_updates {
+        if let Some(velocity) = world.get_velocity_mut(entity) {
+            velocity.dx += delta_dx;
+            velocity.dy += delta_dy;
         }
     }
 }
@@ -351,5 +372,51 @@ mod tests {
 
         assert_position(&world, a, 100.0, 100.0);
         assert_position(&world, b, 200.0, 100.0);
+    }
+
+    #[test]
+    fn circles_bounce_head_on() {
+        let mut world = World2D::new();
+
+        let a = world.spawn();
+        world.add_position(a, Position { x: 100.0, y: 100.0 });
+        world.add_velocity(a, Velocity { dx: 10.0, dy: 0.0 });
+        world.add_circle(a, Circle { radius: 20.0 });
+
+        let b = world.spawn();
+        world.add_position(b, Position { x: 130.0, y: 100.0 });
+        world.add_velocity(b, Velocity { dx: -10.0, dy: 0.0 });
+        world.add_circle(b, Circle { radius: 20.0 });
+
+        step(&mut world, 0.0, 0.0, 1000.0, 1000.0, 900.0, 1.0);
+
+        let vel_a = world.get_velocity(a).unwrap();
+        let vel_b = world.get_velocity(b).unwrap();
+
+        assert!((vel_a.dx + 10.0).abs() < 0.001);
+        assert!((vel_b.dx - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn circle_collision_uses_bouncing_factor() {
+        let mut world = World2D::new();
+
+        let a = world.spawn();
+        world.add_position(a, Position { x: 100.0, y: 100.0 });
+        world.add_velocity(a, Velocity { dx: 10.0, dy: 0.0 });
+        world.add_circle(a, Circle { radius: 20.0 });
+
+        let b = world.spawn();
+        world.add_position(b, Position { x: 130.0, y: 100.0 });
+        world.add_velocity(b, Velocity { dx: -10.0, dy: 0.0 });
+        world.add_circle(b, Circle { radius: 20.0 });
+
+        step(&mut world, 0.0, 0.0, 1000.0, 1000.0, 900.0, 0.5);
+
+        let vel_a = world.get_velocity(a).unwrap();
+        let vel_b = world.get_velocity(b).unwrap();
+
+        assert!((vel_a.dx + 5.0).abs() < 0.001);
+        assert!((vel_b.dx - 5.0).abs() < 0.001);
     }
 }
