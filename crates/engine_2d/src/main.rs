@@ -1,6 +1,7 @@
 mod components;
 mod world;
 
+use components::{Circle, Position, Velocity};
 use eframe::egui;
 use world::World2D;
 
@@ -27,10 +28,31 @@ impl Engine2DApp {
             next_velocity_y: 0.0,
         }
     }
+
+    fn spawn_circle(&mut self, x: f32, y: f32) {
+        let entity = self.world.spawn();
+
+        self.world.add_position(entity, Position { x, y });
+        self.world.add_velocity(
+            entity,
+            Velocity {
+                dx: self.next_velocity_x,
+                dy: self.next_velocity_y,
+            },
+        );
+        self.world.add_circle(
+            entity,
+            Circle {
+                radius: self.next_radius,
+            },
+        );
+    }
 }
 
 impl eframe::App for Engine2DApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.world.update_positions(1.0 / 60.0);
+
         egui::SidePanel::left("tools_panel").show(ctx, |ui| {
             ui.heading("Tools");
             ui.separator();
@@ -45,7 +67,41 @@ impl eframe::App for Engine2DApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Physics Engine 2D");
+            let available_size = ui.available_size_before_wrap();
+            let (response, painter) = ui.allocate_painter(available_size, egui::Sense::click());
+
+            let rect = response.rect;
+            painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(25, 25, 35));
+            painter.rect_stroke(
+                rect,
+                0.0,
+                egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 60, 80)),
+                egui::StrokeKind::Inside,
+            );
+
+            if response.clicked() {
+                if let Some(pointer_pos) = response.interact_pointer_pos() {
+                    let local_x = pointer_pos.x - rect.left();
+                    let local_y = pointer_pos.y - rect.top();
+
+                    match self.selected_tool {
+                        Tool::PlaceCircle => self.spawn_circle(local_x, local_y),
+                    }
+                }
+            }
+
+            for (entity, position) in self.world.positions_iter() {
+                if let Some(circle) = self.world.get_circle(*entity) {
+                    let screen_pos =
+                        egui::Pos2::new(rect.left() + position.x, rect.top() + position.y);
+
+                    painter.circle_filled(
+                        screen_pos,
+                        circle.radius,
+                        egui::Color32::from_rgb(100, 200, 255),
+                    );
+                }
+            }
         });
 
         ctx.request_repaint();
