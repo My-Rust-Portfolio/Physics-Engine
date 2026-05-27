@@ -114,6 +114,10 @@ impl World2D {
     pub fn velocities_iter(&self) -> impl Iterator<Item = (&Entity, &Velocity)> {
         self.velocities.iter()
     }
+
+    pub fn circles_iter(&self) -> impl Iterator<Item = (&Entity, &Circle)> {
+       self.circles.iter()
+    }
 }
 
 #[cfg(test)]
